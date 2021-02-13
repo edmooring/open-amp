@@ -7,14 +7,16 @@ This application is meant to run on the remote CPU running baremetal code.
 This application echoes back data that was sent to it by the master core. */
 
 #include <stdio.h>
-#include <openamp/open_amp.h>
 #include <metal/alloc.h>
-#include "platform_info.h"
+#include "openamp.h"
 #include "rpmsg-echo.h"
+
+extern int init_system(void);
+extern void cleanup_system(void);
 
 #define SHUTDOWN_MSG	0xEF56A55A
 
-#define LPRINTF(format, ...) printf(format, ##__VA_ARGS__)
+#define LPRINTF(format, ...) xil_printf(format, ##__VA_ARGS__)
 //#define LPRINTF(format, ...)
 #define LPERROR(format, ...) LPRINTF("ERROR: " format, ##__VA_ARGS__)
 
@@ -52,69 +54,46 @@ static void rpmsg_service_unbind(struct rpmsg_endpoint *ept)
 }
 
 /*-----------------------------------------------------------------------------*
- *  Application
- *-----------------------------------------------------------------------------*/
-int app(struct rpmsg_device *rdev, void *priv)
-{
-	int ret;
-
-	/* Initialize RPMSG framework */
-	LPRINTF("Try to create rpmsg endpoint.\r\n");
-
-	ret = rpmsg_create_ept(&lept, rdev, RPMSG_SERVICE_NAME,
-			       RPMSG_ADDR_ANY, RPMSG_ADDR_ANY,
-			       rpmsg_endpoint_cb,
-			       rpmsg_service_unbind);
-	if (ret) {
-		LPERROR("Failed to create endpoint.\r\n");
-		return -1;
-	}
-
-	LPRINTF("Successfully created rpmsg endpoint.\r\n");
-	while(1) {
-		platform_poll(priv);
-		/* we got a shutdown request, exit */
-		if (shutdown_req) {
-			break;
-		}
-	}
-	rpmsg_destroy_ept(&lept);
-
-	return 0;
-}
-
-/*-----------------------------------------------------------------------------*
  *  Application entry point
  *-----------------------------------------------------------------------------*/
-int main(int argc, char *argv[])
+int main(void)
 {
-	void *platform;
-	struct rpmsg_device *rpdev;
 	int ret;
 
 	LPRINTF("Starting application...\r\n");
 
 	/* Initialize platform */
-	ret = platform_init(argc, argv, &platform);
+	ret = init_system();
 	if (ret) {
 		LPERROR("Failed to initialize platform.\r\n");
 		ret = -1;
 	} else {
-		rpdev = platform_create_rpmsg_vdev(platform, 0,
-						   VIRTIO_DEV_SLAVE,
-						   NULL, NULL);
-		if (!rpdev) {
-			LPERROR("Failed to create rpmsg virtio device.\r\n");
+		ret = MX_OPENAMP_Init(RPMSG_REMOTE, 0);
+		if (ret) {
+			LPERROR("Failed to initialize OpenAMAP.\r\n");
 			ret = -1;
 		} else {
-			app(rpdev, platform);
-			platform_release_rpmsg_vdev(rpdev, platform);
-			ret = 0;
+			ret = OPENAMP_create_endpoint(&lept, RPMSG_SERVICE_NAME,
+						      RPMSG_ADDR_ANY,
+						      rpmsg_endpoint_cb,
+						      rpmsg_service_unbind);
+			if (ret) {
+				LPERROR("Failed to create endpoint.\r\n");
+				return -1;
+			}
+			while(1) {
+				OPENAMP_poll();
+				/* we got a shutdown request, exit */
+				if (shutdown_req) {
+					break;
+				}
+			}
+			rpmsg_destroy_ept(&lept);
 		}
 	}
 
 	LPRINTF("Stopping application...\r\n");
-	platform_cleanup(platform);
+	cleanup_system();
 
 	return ret;
 }
