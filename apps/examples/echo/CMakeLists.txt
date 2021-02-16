@@ -21,6 +21,7 @@ foreach (_app rpmsg-echo-ping rpmsg-echo)
     list (APPEND _sources "${CMAKE_CURRENT_SOURCE_DIR}/rpmsg-ping.c")
   elseif (${_app} STREQUAL "rpmsg-echo")
     list (APPEND _sources "${CMAKE_CURRENT_SOURCE_DIR}/rpmsg-echo.c")
+    list (APPEND _sources "${CMAKE_CURRENT_SOURCE_DIR}/openamp.c")
   endif (${_app} STREQUAL "rpmsg-echo-ping")
 
   if (WITH_SHARED_LIB)

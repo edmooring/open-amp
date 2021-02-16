@@ -63,18 +63,15 @@ static int OPENAMP_shmem_init(int RPMsgRole)
 	metal_init(&metal_params);
 
 	status = metal_register_generic_device(&shm_device);
-xil_printf("%s:%d status = %d\r\n", __FUNCTION__, __LINE__, status);
 	if (status != 0) {
 		return status;
 	}
 
 	status = metal_device_open("generic", SHM_DEVICE_NAME, &device);
-xil_printf("%s:%d status = %d\r\n", __FUNCTION__, __LINE__, status);
 	if (status != 0) {
 		return status;
 	}
 
-xil_printf("%s:%d\r\n", __FUNCTION__, __LINE__);
 
 	shm_physmap = SHM_START_ADDRESS;
 	metal_io_init(&device->regions[0], (void *)SHM_START_ADDRESS,
@@ -85,14 +82,12 @@ xil_printf("%s:%d\r\n", __FUNCTION__, __LINE__);
 		return -1;
 	}
 
-xil_printf("%s:%d\r\n", __FUNCTION__, __LINE__);
 	/* Initialize resources table variables */
 	rsc_table = get_resource_table(0, 0);
 	if (!rsc_table) {
 		return -1;
 	}
 
-xil_printf("%s:%d\r\n", __FUNCTION__, __LINE__);
 	metal_io_init(&device->regions[1], rsc_table,
 		      (metal_phys_addr_t *) rsc_table, rsc_size, -1U, 0, NULL);
 
@@ -112,7 +107,6 @@ int MX_OPENAMP_Init(int RPMsgRole, rpmsg_ns_bind_cb ns_bind_cb)
 
 	//MAILBOX_Init();
 
-xil_printf("%s:%d\r\n", __FUNCTION__, __LINE__);
 	/* Libmetal Initialization */
 	status = OPENAMP_shmem_init(RPMsgRole);
 	if (status) {
@@ -122,7 +116,6 @@ xil_printf("%s:%d\r\n", __FUNCTION__, __LINE__);
 	// Need to move this to generic libmetal code --TODO
 	zynqmp_r5_a53_ipc_init();
 
-xil_printf("%s:%d\r\n", __FUNCTION__, __LINE__);
 	vdev =
 	    rproc_virtio_create_vdev(RPMsgRole, VDEV_ID, &rsc_table->rpmsg_vdev,
 				     rsc_io, NULL, zynqmp_r5_a53_proc_notify,
@@ -132,10 +125,8 @@ xil_printf("%s:%d\r\n", __FUNCTION__, __LINE__);
 	}
 
 	rproc_virtio_wait_remote_ready(vdev);
-xil_printf("%s:%d\r\n", __FUNCTION__, __LINE__);
 
 	vring_rsc = &rsc_table->rpmsg_vring0;
-xil_printf("%s:%d\r\n", __FUNCTION__, __LINE__);
 	status = rproc_virtio_init_vring(vdev, 0, vring_rsc->notifyid,
 					 (void *)vring_rsc->da, shm_io,
 					 vring_rsc->num, vring_rsc->align);
@@ -144,20 +135,17 @@ xil_printf("%s:%d\r\n", __FUNCTION__, __LINE__);
 	}
 
 	vring_rsc = &rsc_table->rpmsg_vring1;
-xil_printf("%s:%d\r\n", __FUNCTION__, __LINE__);
 	status = rproc_virtio_init_vring(vdev, 1, vring_rsc->notifyid,
 					 (void *)vring_rsc->da, shm_io,
 					 vring_rsc->num, vring_rsc->align);
 	if (status != 0) {
 		return status;
 	}
-xil_printf("%s:%d\r\n", __FUNCTION__, __LINE__);
 
 	rpmsg_virtio_init_shm_pool(&shpool, (void *)VRING_BUFF_ADDRESS,
 				   (size_t) SHM_SIZE);
 	rpmsg_init_vdev(&rvdev, vdev, ns_bind_cb, shm_io, &shpool);
 
-xil_printf("%s:%d\r\n", __FUNCTION__, __LINE__);
 	return 0;
 }
 
@@ -180,7 +168,6 @@ int OPENAMP_create_endpoint(struct rpmsg_endpoint *ept, const char *name,
 	int ret = 0;
 	ret = rpmsg_create_ept(ept, &rvdev.rdev, name, RPMSG_ADDR_ANY, dest, cb,
 			       unbind_cb);
-xil_printf("%s() returns %d\r\n", __FUNCTION__, ret);
 	return ret;
 }
 extern atomic_int kicked;
