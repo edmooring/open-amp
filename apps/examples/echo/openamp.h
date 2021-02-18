@@ -51,6 +51,9 @@ void OPENAMP_check_for_message(void);
 /* Wait loop on endpoint ready ( message dest address is know)*/
 void OPENAMP_Wait_EndPointready(struct rpmsg_endpoint *rp_ept);
 
+/* Poll for notifications */
+int OPENAMP_Poll(void);
+
 #ifdef __cplusplus
 }
 #endif

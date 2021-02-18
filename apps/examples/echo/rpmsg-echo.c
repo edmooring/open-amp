@@ -7,9 +7,7 @@ This application is meant to run on the remote CPU running baremetal code.
 This application echoes back data that was sent to it by the master core. */
 
 #include <stdio.h>
-//#include <openamp/open_amp.h>
 #include <metal/alloc.h>
-//#include "platform_info.h"
 #include "openamp.h"
 #include "rpmsg-echo.h"
 
@@ -58,7 +56,6 @@ static void rpmsg_service_unbind(struct rpmsg_endpoint *ept)
 /*-----------------------------------------------------------------------------*
  *  Application entry point
  *-----------------------------------------------------------------------------*/
-//int main(int argc, char *argv[])
 int main(void)
 {
 	int ret;
@@ -71,7 +68,7 @@ int main(void)
 		LPERROR("Failed to initialize platform.\r\n");
 		ret = -1;
 	} else {
-		ret = MX_OPENAMP_Init(VIRTIO_DEV_SLAVE, 0);
+		ret = MX_OPENAMP_Init(RPMSG_REMOTE, 0);
 		if (ret) {
 			LPERROR("Failed to initialize OpenAMAP.\r\n");
 			ret = -1;

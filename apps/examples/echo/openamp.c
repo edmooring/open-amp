@@ -21,6 +21,7 @@
 #include "openamp.h"
 #include "rsc_table.h"
 #include "metal/sys.h"
+#include "metal/irq.h"
 #include "metal/device.h"
 
 // Get these from System Device Tree later
@@ -36,7 +37,7 @@ static struct rpmsg_virtio_shm_pool shpool;
 static struct rpmsg_virtio_device rvdev;
 
 extern int zynqmp_r5_a53_proc_notify(void *priv, uint32_t id);
-extern int zynqmp_r5_ipc_init(void);
+extern int zynqmp_r5_a53_ipc_init(void);
 
 static metal_phys_addr_t shm_physmap;
 
@@ -57,7 +58,6 @@ static int OPENAMP_shmem_init(int RPMsgRole)
 	int status = 0;
 	struct metal_device *device = NULL;
 	struct metal_init_params metal_params = METAL_INIT_DEFAULTS;
-	void *rsc_tab_addr = NULL;
 	int rsc_size = 4096;
 
 	metal_init(&metal_params);
