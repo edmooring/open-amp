@@ -60,7 +60,7 @@ if (NOT WITH_VIRTIO_SLAVE)
 endif (NOT WITH_VIRTIO_SLAVE)
 
 # Set the complication flags
-set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
+set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Wall -Wextra")
 
 option (WITH_STATIC_LIB "Build with a static library" ON)
 

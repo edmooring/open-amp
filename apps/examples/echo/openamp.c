@@ -18,17 +18,18 @@
   */
 
 #define METAL_MAX_DEVICE_REGIONS 2
-#include "openamp.h"
 #include "rsc_table.h"
 #include "metal/sys.h"
 #include "metal/irq.h"
 #include "metal/device.h"
+#include <openamp/openamp.h>
+#include <stdio.h>
 
 // Get these from System Device Tree later
 #define SHM_START_ADDRESS 0x3ED00000
 #define SHM_SIZE 0X100000
 
-#define SHM_DEVICE_NAME "openamp-shm"
+#define SHM_DEVICE_NAME "openamp.shm"
 
 static struct metal_io_region *shm_io;
 static struct metal_io_region *rsc_io;
@@ -36,8 +37,8 @@ static struct remote_resource_table *rsc_table;
 static struct rpmsg_virtio_shm_pool shpool;
 static struct rpmsg_virtio_device rvdev;
 
-extern int zynqmp_r5_a53_proc_notify(void *priv, uint32_t id);
-extern int zynqmp_r5_a53_ipc_init(void);
+extern int metal_ipc_notify(void *priv, uint32_t id);
+extern int metal_ipc_init(int);
 
 static metal_phys_addr_t shm_physmap;
 
@@ -58,24 +59,28 @@ static int OPENAMP_shmem_init(int RPMsgRole)
 	int status = 0;
 	struct metal_device *device = NULL;
 	struct metal_init_params metal_params = METAL_INIT_DEFAULTS;
+	struct OPENAMP_config_data *oa_data;
 	int rsc_size = 4096;
 
 	metal_init(&metal_params);
 
 	status = metal_register_generic_device(&shm_device);
 	if (status != 0) {
+		printf("%s: %d status = %d\r\n", __FUNCTION__, __LINE__, status);
 		return status;
 	}
 
-	status = metal_device_open("generic", SHM_DEVICE_NAME, &device);
+	status = metal_device_open("platform", SHM_DEVICE_NAME, &device);
 	if (status != 0) {
+		printf("%s: %d status = %d\r\n", __FUNCTION__, __LINE__, status);
 		return status;
 	}
 
+	oa_data = OPENAMP_get_config();
 
-	shm_physmap = SHM_START_ADDRESS;
-	metal_io_init(&device->regions[0], (void *)SHM_START_ADDRESS,
-		      &shm_physmap, SHM_SIZE, -1, 0, NULL);
+	shm_physmap = oa_data->shm_start_address;
+	metal_io_init(&device->regions[0], (void *)oa_data->shm_start_address,
+		      &shm_physmap, oa_data->shm_size, -1, 0, NULL);
 
 	shm_io = metal_device_io_region(device, 0);
 	if (shm_io == NULL) {
@@ -103,6 +108,7 @@ int MX_OPENAMP_Init(int RPMsgRole, rpmsg_ns_bind_cb ns_bind_cb)
 {
 	struct fw_rsc_vdev_vring *vring_rsc = NULL;
 	struct virtio_device *vdev = NULL;
+	struct OPENAMP_config_data *oa_data = NULL;
 	int status = 0;
 
 	//MAILBOX_Init();
@@ -110,15 +116,19 @@ int MX_OPENAMP_Init(int RPMsgRole, rpmsg_ns_bind_cb ns_bind_cb)
 	/* Libmetal Initialization */
 	status = OPENAMP_shmem_init(RPMsgRole);
 	if (status) {
+		printf("%s: %d status = %d\r\n", __FUNCTION__, __LINE__, status);
 		return status;
 	}
 	/* initialize IPC */
-	// Need to move this to generic libmetal code --TODO
-	zynqmp_r5_a53_ipc_init();
+
+	if (status = metal_ipc_init(RPMsgRole)) {
+		printf("%s: %d status = %d\r\n", __FUNCTION__, __LINE__, status);
+		return status;
+	}
 
 	vdev =
-	    rproc_virtio_create_vdev(RPMsgRole, VDEV_ID, &rsc_table->rpmsg_vdev,
-				     rsc_io, NULL, zynqmp_r5_a53_proc_notify,
+	    rproc_virtio_create_vdev(RPMsgRole, 0, &rsc_table->rpmsg_vdev,
+				     rsc_io, NULL, metal_ipc_notify,
 				     NULL);
 	if (vdev == NULL) {
 		return -1;
@@ -131,6 +141,7 @@ int MX_OPENAMP_Init(int RPMsgRole, rpmsg_ns_bind_cb ns_bind_cb)
 					 (void *)vring_rsc->da, shm_io,
 					 vring_rsc->num, vring_rsc->align);
 	if (status != 0) {
+		printf("%s: %d status = %d\r\n", __FUNCTION__, __LINE__, status);
 		return status;
 	}
 
@@ -139,11 +150,13 @@ int MX_OPENAMP_Init(int RPMsgRole, rpmsg_ns_bind_cb ns_bind_cb)
 					 (void *)vring_rsc->da, shm_io,
 					 vring_rsc->num, vring_rsc->align);
 	if (status != 0) {
+		printf("%s: %d status = %d\r\n", __FUNCTION__, __LINE__, status);
 		return status;
 	}
+	oa_data = OPENAMP_get_config();
 
-	rpmsg_virtio_init_shm_pool(&shpool, (void *)VRING_BUFF_ADDRESS,
-				   (size_t) SHM_SIZE);
+	rpmsg_virtio_init_shm_pool(&shpool, (void *)oa_data->vring_buff_address,
+				   (size_t) oa_data->vring_size);
 	rpmsg_init_vdev(&rvdev, vdev, ns_bind_cb, shm_io, &shpool);
 
 	return 0;
@@ -170,7 +183,7 @@ int OPENAMP_create_endpoint(struct rpmsg_endpoint *ept, const char *name,
 			       unbind_cb);
 	return ret;
 }
-extern atomic_int kicked;
+extern atomic_int *kicked;
 
 int OPENAMP_poll(void)
 {
@@ -189,7 +202,7 @@ int OPENAMP_poll(void)
                 (void)flags;
 #else /* !RPMSG_NO_IPI */
                 flags = metal_irq_save_disable();
-                if (!(atomic_flag_test_and_set(&kicked))) {
+                if (!(atomic_flag_test_and_set(kicked))) {
                         metal_irq_restore_enable(flags);
                         ret = rproc_virtio_notified(rvdev.vdev, RSC_NOTIFY_ID_ANY);
                         if (ret)
@@ -198,7 +211,9 @@ int OPENAMP_poll(void)
                 }
                 metal_irq_restore_enable(flags);
 // This should be a libmetal API.
-                asm("wfi");
+                //asm("wfi");
+// This doesn't actually do anything on most architectures
+		metal_cpu_yield();
 #endif /* RPMSG_NO_IPI */
         }
         return 0;

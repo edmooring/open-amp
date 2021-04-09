@@ -8,7 +8,7 @@ This application echoes back data that was sent to it by the master core. */
 
 #include <stdio.h>
 #include <metal/alloc.h>
-#include "openamp.h"
+#include <openamp/openamp.h>
 #include "rpmsg-echo.h"
 
 extern int init_system(void);
@@ -16,7 +16,7 @@ extern void cleanup_system(void);
 
 #define SHUTDOWN_MSG	0xEF56A55A
 
-#define LPRINTF(format, ...) xil_printf(format, ##__VA_ARGS__)
+#define LPRINTF(format, ...) printf(format, ##__VA_ARGS__)
 //#define LPRINTF(format, ...)
 #define LPERROR(format, ...) LPRINTF("ERROR: " format, ##__VA_ARGS__)
 
@@ -70,7 +70,7 @@ int main(void)
 	} else {
 		ret = MX_OPENAMP_Init(RPMSG_REMOTE, 0);
 		if (ret) {
-			LPERROR("Failed to initialize OpenAMAP.\r\n");
+			LPERROR("Failed to initialize OpenAMAP (%d).\r\n", ret);
 			ret = -1;
 		} else {
 			ret = OPENAMP_create_endpoint(&lept, RPMSG_SERVICE_NAME,

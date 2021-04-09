@@ -79,7 +79,7 @@ static int zynqmp_r5_a53_proc_irq_handler(int vect_id, void *data)
 #endif /* !RPMSG_NO_IPI */
 
 int
-zynqmp_r5_a53_ipc_init(void)
+metal_ipc_init(void)
 {
 	unsigned int irq_vect;
 	int status;
@@ -119,7 +119,7 @@ xil_printf("kick_io = 0x%p\r\n", kick_io);
 	return 0;
 }
 
-int zynqmp_r5_a53_proc_notify(void *rproc, uint32_t id)
+int metal_ipc_notify(void *rproc, uint32_t id)
 {
 
 	(void)id;

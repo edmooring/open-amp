@@ -25,7 +25,7 @@
 #endif
 
 #include "openamp/open_amp.h"
-#include "openamp_conf.h"
+//#include "openamp_conf.h"
 
 #define OPENAMP_send  rpmsg_send
 #define OPENAMP_destroy_ept rpmsg_destroy_ept
@@ -48,11 +48,24 @@ int OPENAMP_create_endpoint(struct rpmsg_endpoint *ept, const char *name,
 /* Check for new rpmsg reception */
 void OPENAMP_check_for_message(void);
 
+/* Poll for new rpmsg */
+int OPENAMP_poll(void);
+
 /* Wait loop on endpoint ready ( message dest address is know)*/
 void OPENAMP_Wait_EndPointready(struct rpmsg_endpoint *rp_ept);
 
-/* Poll for notifications */
-int OPENAMP_Poll(void);
+/* External data, right now set up in system initialization,
+   later it will come from the System Device Tree.
+*/
+
+struct OPENAMP_config_data {
+	unsigned int shm_start_address;
+	unsigned int shm_size;
+	unsigned int vring_buff_address;
+	unsigned int vring_size;
+};
+
+struct OPENAMP_config_data *OPENAMP_get_config(void);
 
 #ifdef __cplusplus
 }
